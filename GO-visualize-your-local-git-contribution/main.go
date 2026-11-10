@@ -4,10 +4,6 @@ import (
 	"flag" //flag is a library to parse command line arguments
 )
 
-func stats(email string) {
-	print("stats")
-}
-
 func main() {
 
 	var folder string

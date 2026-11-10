@@ -13,8 +13,8 @@ import(
 func scan(folder string) {
 	print("Found folders:\n\n")
 	repositories := recursiveScanFolders(folder)
-	filePath := fileDotPath()
-	addNewSliceElementsToFile(filePath, repositories)
+	dotFilePath := fileDotPath()
+	addNewSliceElementsToFile(dotFilePath, repositories)
 	fmt.Printf("\n\nSucessfully added\n\n")
 }
 
@@ -99,12 +99,11 @@ func openFile(filepath string) *os.File{
 	f, err := os.OpenFile(filepath, os.O_APPEND|os.O_RDWR, 0755)
 	if err != nil{
 		if os.IsNotExist(err){
-			f, err := os.Create(filepath)
+			f, err = os.Create(filepath)
 			if err != nil{
 				panic(err)
 			}
 		}
-
 		panic(err)
 	}
 	return f
