@@ -4,6 +4,7 @@ import (
 	"sort"
 	"time"
 	"fmt"
+	"os"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -34,39 +35,44 @@ func processRepositories(email string) map[int]int{
 func fillCommits(email string, repoPath string, commits map[int]int) map[int]int{
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil{
-		panic(err)
+		fmt.Fprintf(os.Stderr, "skipping %s: %v\n", repoPath, err)
+		return commits
 	}
 
 	//head returns a git referecne to where repo is pointing to
 	ref, err := repo.Head()
 	if err != nil{
-		panic(err)
+		fmt.Fprintf(os.Stderr, "skipping %s: %v\n", repoPath, err)
+		return commits
 	}
 
-	//a github log action being performed - from gets the commits 
+	//a github log action being performed - from gets the commits
 	iterator, err := repo.Log(&git.LogOptions{From: ref.Hash()})
 	if err != nil{
-		panic(err)
+		fmt.Fprintf(os.Stderr, "skipping %s: %v\n", repoPath, err)
+		return commits
 	}
 
 	offset := calcOffset()
 
 	err = iterator.ForEach(func(c *object.Commit) error {
-		daysAgo := countDaysSinceDate(c.Author.When) + offset
+		daysAgo := countDaysSinceDate(c.Author.When)
 
 		if(c.Author.Email != email){
 			return nil
 		}
 
 		if daysAgo != outOfRange{
-			commits[daysAgo]++
+			commits[daysAgo + offset]++
 		}
 
 		return nil
 	})
 
+	// shallow clones end with "object not found" when the walk reaches
+	// the missing parents: keep the commits counted so far
 	if err != nil{
-		panic(err)
+		fmt.Fprintf(os.Stderr, "partial history for %s: %v\n", repoPath, err)
 	}
 
 	return commits
@@ -80,11 +86,11 @@ func getBegginningOfDay(t time.Time) time.Time{
 
 func countDaysSinceDate(date time.Time) int{
 	days := 0
-	now := getBegginningOfDay(date)
+	now := getBegginningOfDay(time.Now())
 
 	for date.Before(now){
-		date.Add(time.Hour * 24)
-		days ++ 
+		date = date.Add(time.Hour * 24)
+		days ++
 		if days > daysInLastSixMonths{
 			return outOfRange
 		}
@@ -174,7 +180,7 @@ func printCells(cols map[int]column){
 				}
 			}
 			printCell(0, false)
-		} 
+		}
 		fmt.Printf("\n")
 	}
 }
@@ -189,7 +195,7 @@ func printMonths(){
 			fmt.Printf("%s ", week.Month().String()[:3])
 			month =week.Month()
 		} else{
-			fmt.Printf("		")	
+			fmt.Printf("		")
 		}
 
 		week = week.Add(7 * time.Hour * 24)
@@ -206,15 +212,15 @@ func printDayCol(day int) {
 	case 1:
 		out = " Mon "
 	// case 2:
-	// 	out = " Tues "	
+	// 	out = " Tues "
 	case 3:
 		out = " Wed "
 	// case 4:
-	// 	out = " Thurs"	
+	// 	out = " Thurs"
 	case 5:
 		out = " Fri "
 	// case 6:
-	// 	out = " Sat "	
+	// 	out = " Sat "
 	}
 
 	fmt.Print(out)
@@ -252,4 +258,3 @@ func printCell(val int, today bool) {
 
     fmt.Printf(escape+str+"\033[0m", val)
 }
-
